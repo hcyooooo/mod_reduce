@@ -50,14 +50,22 @@ module barrett_reduction #(
     input [Q_WIDTH-1:0] q_val;
     input [5:0] k_val;
     reg [63:0] temp_numerator;
+    reg [DATA_WIDTH:0] quotient;  // 商
     begin
       if (q_val == 0) calc_mu = 0;
       else begin
         temp_numerator = (64'h1 << (2 * k_val));
-        calc_mu = temp_numerator / q_val;
+        quotient = 0;
+        // 循环减法替代除法
+        while (temp_numerator >= q_val) begin
+          temp_numerator = temp_numerator - q_val;
+          quotient = quotient + 1;
+        end
+        calc_mu = quotient;
       end
     end
   endfunction
+
 
   // 预计算Barrett参数
   always @(*) begin
