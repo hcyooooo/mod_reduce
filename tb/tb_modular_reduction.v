@@ -1,4 +1,4 @@
-module barrett_reduction_tb;
+module modular_reduction_tb;
   parameter DATA_WIDTH = 48;
   parameter Q_WIDTH = 23;
 
@@ -8,7 +8,7 @@ module barrett_reduction_tb;
   wire [Q_WIDTH-1:0] data_out;
   wire done;
 
-  barrett_reduction #(
+  modular_reduction #(
       .DATA_WIDTH(DATA_WIDTH),
       .Q_WIDTH(Q_WIDTH)
   ) dut (

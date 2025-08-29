@@ -1,4 +1,5 @@
-module barrett_reduction #(
+// 模块化约减 (Barrett Reduction) 实现
+module modular_reduction #(
     parameter DATA_WIDTH = 48,  // 输入数据位宽 (支持到q²级别)
     parameter Q_WIDTH    = 23   // 模数位宽 (精确支持到Dilithium的8380417)
 ) (
