@@ -1,6 +1,5 @@
-// 简化测试模块
 module barrett_reduction_tb;
-    parameter DATA_WIDTH = 32;
+    parameter DATA_WIDTH = 48;
     parameter Q_WIDTH = 23;
     
     reg clk, rst_n, start;
@@ -27,21 +26,27 @@ module barrett_reduction_tb;
     
     initial begin
         clk = 0; rst_n = 0; start = 0;
-        data_in = 0; Q = 8380417;
+        data_in = 0; Q = 3329;
         
         #10 rst_n = 1;
         
-        // 测试1: 大数约减
-        #10 data_in = 10000000; start = 1;
+        // 测试1: Kyber模数
+        #10 data_in = 32'h10000; Q = 3329; start = 1;
         #10 start = 0;
         wait(done);
-        $display("Test 1: %d mod %d = %d", 32'h10000, 3329, data_out);
+        $display("Kyber Test: %d mod %d = %d", 32'h10000, 3329, data_out);
         
-        // // 测试2: 小数
-//         #20 data_in = 1000; start = 1; 
-//         #10 start = 0;
-//         wait(done);
-//         $display("Test 2: %d mod %d = %d", 1000, 3329, data_out);
+        // 测试2: Dilithium模数  
+        #20 data_in = 32'h1000000; Q = 8380417; start = 1;
+        #10 start = 0;
+        wait(done);
+        $display("Dilithium Test: %d mod %d = %d", 32'h1000000, 8380417, data_out);
+        
+        // 测试3: NTRU模数
+        #20 data_in = 10000; Q = 4591; start = 1; 
+        #10 start = 0;
+        wait(done);
+        $display("NTRU Test: %d mod %d = %d", 10000, 4591, data_out);
         
         #20 $finish;
     end
