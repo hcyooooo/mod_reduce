@@ -49,12 +49,12 @@ module barrett_reduction #(
   function automatic [DATA_WIDTH:0] calc_mu;
     input [Q_WIDTH-1:0] q_val;
     input [5:0] k_val;
-    reg [63:0] temp_numerator;
+    reg [47:0] temp_numerator;
     reg [DATA_WIDTH:0] quotient;  // 商
     begin
       if (q_val == 0) calc_mu = 0;
       else begin
-        temp_numerator = (64'h1 << (2 * k_val));
+        temp_numerator = (48'h1 << (2 * k_val));
         quotient = 0;
         // 循环减法替代除法
         while (temp_numerator >= q_val) begin
