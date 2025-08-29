@@ -93,7 +93,7 @@ module barrett_reduction #(
                     case (cycle_count)
                         2'b00: begin
                             // 第1周期: t1 = x >> k, temp1 = t1 * mu
-                            temp1 <= (x_reg >> k) * mu;
+                            temp1 <= (x_reg * mu) >> k;
                             cycle_count <= 2'b01;
                         end
                         2'b01: begin
