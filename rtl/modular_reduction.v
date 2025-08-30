@@ -29,9 +29,9 @@ module modular_reduction_fixed #(
 
   // 中间结果寄存器
   reg [DATA_WIDTH-1:0] x_reg;
-  reg [          71:0] temp1;  // (x>>k) * mu
-  reg [          71:0] temp2;  // (temp1>>k) * Q
-  reg [          48:0] result;  // 中间结果
+  reg [          47:0] temp1;  // (x>>k) * mu
+  reg [          47:0] temp2;  // (temp1>>k) * Q
+  reg [          47:0] result;  // 中间结果
 
   // 主状态机
   always @(posedge clk or negedge rst_n) begin
@@ -61,26 +61,21 @@ module modular_reduction_fixed #(
               // 第1周期: temp1 = (x >> k) * mu
               temp1 <= (x_reg >> K) * MU;
               // temp1 <= (x_reg * MU) >> K;
-              $display("temp1=%d", (x_reg >> K) * MU);
               cycle_count <= 2'b01;
             end
             2'b01: begin
               // 第2周期: temp2 = (temp1 >> K) * Q
               temp2 <= (temp1 >> K) * Q;
-              $display("temp2=%d", (temp1 >> K) * Q);
               cycle_count <= 2'b10;
             end
             2'b10: begin
               // 第3周期: result = x - temp2
               result <= x_reg - temp2;
-              $display("result=%d", x_reg - temp2);
               cycle_count <= 2'b11;
             end
             2'b11: begin
               // 第4周期: 最终条件约减
-
               if (result >= Q) begin
-                $display("result2 = %d", result);
                 result <= result - Q;
               end else begin
                 data_out <= result;
