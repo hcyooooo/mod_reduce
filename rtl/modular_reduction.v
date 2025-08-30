@@ -1,5 +1,5 @@
-// 模块化约减 (Barrett Reduction) 实现
-module modular_reduction #(
+// 模约减模块 (针对固定模数8380417优化的Barrett Reduction)
+module modular_reduction_fixed #(
     parameter DATA_WIDTH = 48,  // 输入数据位宽 (支持到q²级别)
     parameter Q_WIDTH    = 23   // 模数位宽 (精确支持到Dilithium的8380417)
 ) (
@@ -11,70 +11,29 @@ module modular_reduction #(
 
     // 数据接口
     input  wire [DATA_WIDTH-1:0] data_in,
-    input  wire [   Q_WIDTH-1:0] Q,        // 模数
-    output reg  [   Q_WIDTH-1:0] data_out
+    output reg  [Q_WIDTH-1:0]    data_out
 );
 
-  // 简化状态定义
+  // 固定模数和预计算的Barrett参数
+  localparam [22:0] Q = 23'd8380417;  // 固定模数
+  localparam [5:0] K = 6'd24;  // k = ceil(log2(8380417)) + 1 = 24
+  localparam [48:0] MU = 49'h200801C;  // μ = floor(2^48 / 8380417)
+
+  // 状态定义
   localparam IDLE = 2'b00;
   localparam COMPUTE = 2'b01;
   localparam FINISH = 2'b10;
 
-  reg [1:0] state;
-  reg [1:0] cycle_count;  // 计算周期计数
-
-  // Barrett参数
-  reg [5:0] k;  // k值最大约25，需要6位
-  reg [DATA_WIDTH:0] mu;  // μ位宽优化
+  reg [           1:0] state;
+  reg [           1:0] cycle_count;
 
   // 中间结果寄存器
   reg [DATA_WIDTH-1:0] x_reg;
-  reg [DATA_WIDTH+Q_WIDTH-1:0] temp1, temp2;  // 调整到合适位宽
-  reg [Q_WIDTH-1:0] result;
+  reg [          71:0] temp1;  // (x>>k) * mu
+  reg [          71:0] temp2;  // (temp1>>k) * Q
+  reg [          48:0] result;  // 中间结果
 
-  // k值计算
-  // k = ceil(log2(Q)) + 1
-  function automatic [5:0] calc_k;  // 扩展到6位
-    input [Q_WIDTH-1:0] q_val;
-    integer i;
-    begin
-      calc_k = 1;
-      for (i = 0; i < Q_WIDTH; i = i + 1) begin
-        if (q_val > (1 << i)) calc_k = i + 2;  // ceil(log2(q)) + 1
-      end
-    end
-  endfunction
-
-  // μ值计算
-  // μ = floor(2^(2k) / Q)
-  function automatic [DATA_WIDTH:0] calc_mu;
-    input [Q_WIDTH-1:0] q_val;
-    input [5:0] k_val;
-    reg [47:0] temp_numerator;
-    reg [DATA_WIDTH:0] quotient;  // 商
-    begin
-      if (q_val == 0) calc_mu = 0;
-      else begin
-        temp_numerator = (48'h1 << (2 * k_val));
-        quotient = 0;
-        // 循环减法替代除法
-        while (temp_numerator >= q_val) begin
-          temp_numerator = temp_numerator - q_val;
-          quotient = quotient + 1;
-        end
-        calc_mu = quotient;
-      end
-    end
-  endfunction
-
-
-  // 预计算Barrett参数
-  always @(*) begin
-    k  = calc_k(Q);
-    mu = calc_mu(Q, k);
-  end
-
-  // 主状态机和数据路径
+  // 主状态机
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state <= IDLE;
@@ -99,25 +58,34 @@ module modular_reduction #(
         COMPUTE: begin
           case (cycle_count)
             2'b00: begin
-              // 第1周期: t1 = x >> k, temp1 = t1 * mu
-              temp1 <= (x_reg * mu) >> k;
+              // 第1周期: temp1 = (x >> k) * mu
+              temp1 <= (x_reg >> K) * MU;
+              // temp1 <= (x_reg * MU) >> K;
+              $display("temp1=%d", (x_reg >> K) * MU);
               cycle_count <= 2'b01;
             end
             2'b01: begin
-              // 第2周期: t2 = temp1 >> k, temp2 = t2 * Q
-              temp2 <= (temp1 >> k) * Q;
+              // 第2周期: temp2 = (temp1 >> K) * Q
+              temp2 <= (temp1 >> K) * Q;
+              $display("temp2=%d", (temp1 >> K) * Q);
               cycle_count <= 2'b10;
             end
             2'b10: begin
-              // 第3周期: r = x - temp2, 条件约减
-              result <= x_reg - temp2[Q_WIDTH-1:0];
+              // 第3周期: result = x - temp2
+              result <= x_reg - temp2;
+              $display("result=%d", x_reg - temp2);
               cycle_count <= 2'b11;
             end
             2'b11: begin
-              // 第4周期: 最终约减和输出
-              if (result >= Q) data_out <= result - Q;
-              else data_out <= result;
-              state <= FINISH;
+              // 第4周期: 最终条件约减
+
+              if (result >= Q) begin
+                $display("result2 = %d", result);
+                result <= result - Q;
+              end else begin
+                data_out <= result;
+                state <= FINISH;
+              end
             end
           endcase
         end
