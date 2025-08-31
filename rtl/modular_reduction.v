@@ -32,7 +32,7 @@ module modular_reduction #(
   // MU = 0x200801C = 28位
   // 分解为移位加法: MU = 2^25 + 2^21 + 2^20 + 2^2 + 2^1 + 1
   function [47:0] mul_mu;
-    input [21:0] x;  // x >> K后最大22位
+    input [23:0] x;  // x >> K后最大22位
     begin
       mul_mu = (x << 25) + (x << 21) + (x << 20) + (x << 2) + (x << 1) + x;
     end
