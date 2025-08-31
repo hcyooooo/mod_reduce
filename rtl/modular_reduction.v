@@ -1,37 +1,50 @@
-// 模约减模块 (针对固定模数8380417优化的Barrett Reduction)
-module modular_reduction_fixed #(
-    parameter DATA_WIDTH = 48,  // 输入数据位宽 (支持到q²级别)
-    parameter Q_WIDTH    = 23   // 模数位宽 (精确支持到Dilithium的8380417)
+// 模约减模块 (针对固定模数8380417优化的Barrett Reduction，无DSP版)
+module modular_reduction #(
+    parameter DATA_WIDTH = 48,  // 输入数据位宽
+    parameter Q_WIDTH    = 23   // 模数位宽
 ) (
-    // 时钟和控制信号
     input  wire clk,
     input  wire rst_n,
     input  wire start,
     output reg  done,
-
-    // 数据接口
     input  wire [DATA_WIDTH-1:0] data_in,
     output reg  [Q_WIDTH-1:0]    data_out
 );
 
   // 固定模数和预计算的Barrett参数
-  localparam [22:0] Q = 23'd8380417;  // 固定模数
-  localparam [5:0] K = 6'd24;  // k = ceil(log2(8380417)) + 1 = 24
-  localparam [48:0] MU = 49'h200801C;  // μ = floor(2^48 / 8380417)
+  localparam [22:0] Q = 23'd8380417;      // 固定模数
+  localparam [5:0]  K = 6'd24;            // k = ceil(log2(Q)) + 1 = 24
 
   // 状态定义
-  localparam IDLE = 2'b00;
+  localparam IDLE    = 2'b00;
   localparam COMPUTE = 2'b01;
-  localparam FINISH = 2'b10;
+  localparam FINISH  = 2'b10;
 
-  reg [           1:0] state;
-  reg [           1:0] cycle_count;
+  reg [1:0] state;
+  reg [1:0] cycle_count;
 
-  // 中间结果寄存器
+  // 中间寄存器
   reg [DATA_WIDTH-1:0] x_reg;
-  reg [          47:0] temp1;  // (x>>k) * mu
-  reg [          47:0] temp2;  // (temp1>>k) * Q
-  reg [          47:0] result;  // 中间结果
+  reg [47:0] temp1;  // (x>>K)*MU 替代乘法
+  reg [47:0] temp2;  // (temp1>>K)*Q 替代乘法
+  reg [47:0] result;
+
+  // MU = 0x200801C = 28位
+  // 分解为移位加法: MU = 2^25 + 2^21 + 2^20 + 2^2 + 2^1 + 1
+  function [47:0] mul_mu;
+    input [21:0] x;  // x >> K后最大22位
+    begin
+      mul_mu = (x << 25) + (x << 21) + (x << 20) + (x << 2) + (x << 1) + x;
+    end
+  endfunction
+
+  // Q = 8380417 = 2^23 + 1
+  function [47:0] mul_q;
+    input [23:0] x;
+    begin
+      mul_q = (x << 23) + x;
+    end
+  endfunction
 
   // 主状态机
   always @(posedge clk or negedge rst_n) begin
@@ -58,14 +71,13 @@ module modular_reduction_fixed #(
         COMPUTE: begin
           case (cycle_count)
             2'b00: begin
-              // 第1周期: temp1 = (x >> k) * mu
-              temp1 <= (x_reg >> K) * MU;
-              // temp1 <= (x_reg * MU) >> K;
+              // 第1周期: temp1 = (x >> K) * MU (移位加法实现)
+              temp1 <= mul_mu(x_reg >> K);
               cycle_count <= 2'b01;
             end
             2'b01: begin
-              // 第2周期: temp2 = (temp1 >> K) * Q
-              temp2 <= (temp1 >> K) * Q;
+              // 第2周期: temp2 = (temp1 >> K) * Q (移位加法实现)
+              temp2 <= mul_q(temp1 >> K);
               cycle_count <= 2'b10;
             end
             2'b10: begin
@@ -86,11 +98,10 @@ module modular_reduction_fixed #(
         end
 
         FINISH: begin
-          done  <= 1;
+          done <= 1;
           state <= IDLE;
         end
       endcase
     end
   end
-
 endmodule

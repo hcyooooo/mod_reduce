@@ -5,7 +5,7 @@ module tb_modular_reduction;
   wire [22:0] data_out;
 
   // 实例化被测模块
-  modular_reduction_fixed dut (
+  modular_reduction dut (
       .clk(clk),
       .rst_n(rst_n),
       .start(start),
