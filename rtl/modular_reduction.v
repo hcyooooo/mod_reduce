@@ -12,13 +12,13 @@ module modular_reduction #(
 );
 
   // 固定模数和预计算的Barrett参数
-  localparam [22:0] Q = 23'd8380417;      // 固定模数
-  localparam [5:0]  K = 6'd24;            // k = ceil(log2(Q)) + 1 = 24
+  localparam [22:0] Q = 23'd8380417;  // 固定模数
+  localparam [5:0] K = 6'd24;  // k = ceil(log2(Q)) + 1 = 24
 
   // 状态定义
-  localparam IDLE    = 2'b00;
+  localparam IDLE = 2'b00;
   localparam COMPUTE = 2'b01;
-  localparam FINISH  = 2'b10;
+  localparam FINISH = 2'b10;
 
   reg [1:0] state;
   reg [1:0] cycle_count;
@@ -30,19 +30,19 @@ module modular_reduction #(
   reg [47:0] result;
 
   // MU = 0x200801C = 28位
-  // 分解为移位加法: MU = 2^25 + 2^21 + 2^20 + 2^2 + 2^1 + 1
+  // 分解为移位加法: MU = 2^25 + 2^15 + 2^4 + 2^3 + 2^2
   function [47:0] mul_mu;
     input [23:0] x;  // x >> K后最大22位
     begin
-      mul_mu = (x << 25) + (x << 21) + (x << 20) + (x << 2) + (x << 1) + x;
+      mul_mu = (x << 25) + (x << 15) + (x << 4) + (x << 3) + (x << 2);
     end
   endfunction
 
-  // Q = 8380417 = 2^23 + 1
+  // Q = 8380417 = 2^23 + 2^22 + 2^21 + 2^20 + 2^19 + 2^18 + 2^17 + 2^16 + 2^15 + 2^14 + 2^13 + 2^3 + 2^2 + 1
   function [47:0] mul_q;
     input [23:0] x;
     begin
-      mul_q = (x << 23) + x;
+      mul_q = (x << 23) - (x << 13) + x;
     end
   endfunction
 
@@ -98,7 +98,7 @@ module modular_reduction #(
         end
 
         FINISH: begin
-          done <= 1;
+          done  <= 1;
           state <= IDLE;
         end
       endcase
