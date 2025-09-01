@@ -1,4 +1,4 @@
-// 模约减模块 (针对固定模数8380417优化的Barrett Reduction，无DSP版)
+// 模约减模块 (针对固定模数8380417优化的Barrett Reduction)
 module modular_reduction #(
     parameter DATA_WIDTH = 48,  // 输入数据位宽
     parameter Q_WIDTH    = 23   // 模数位宽
@@ -71,12 +71,12 @@ module modular_reduction #(
         COMPUTE: begin
           case (cycle_count)
             2'b00: begin
-              // 第1周期: temp1 = (x >> K) * MU (移位加法实现)
+              // 第1周期: temp1 = (x >> K) * MU 
               temp1 <= mul_mu(x_reg >> K);
               cycle_count <= 2'b01;
             end
             2'b01: begin
-              // 第2周期: temp2 = (temp1 >> K) * Q (移位加法实现)
+              // 第2周期: temp2 = (temp1 >> K) * Q 
               temp2 <= mul_q(temp1 >> K);
               cycle_count <= 2'b10;
             end
